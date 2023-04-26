@@ -1,3 +1,4 @@
+import redis
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -8,6 +9,9 @@ from splitIt.models import Users
 from django.db.models import Q
 import bcrypt
 from .authentication_tokens import create_tokens, decode_tokens
+import redis
+
+redis_instance = redis.Redis(host='localhost', port=6379, db=0)
 
 
 class CreateAccount(APIView):
@@ -59,6 +63,7 @@ class UserLogin(APIView):
 
 class AuthenticateUser(APIView):
     authentication_classes = []
+
     def get(self, request):
         try:
             authentication_token = get_authorization_header(request).split()
@@ -80,13 +85,35 @@ class RefreshToken(APIView):
         try:
             refresh_token = request.COOKIES.get('refresh_token')
             user_id = decode_tokens(refresh_token, False)['user_id']
-            access_token = create_tokens(user_id, True)
 
+            blacklist = redis_instance.lrange("blacklist", 0, -1)
+
+            for each in blacklist:
+                if each.decode('utf-8') == str(refresh_token):
+                    return Response({"message": "User is not authenticated."}, status=401)
+
+            access_token = create_tokens(user_id, True)
             response = Response({"access_token": access_token})
             response.set_cookie(key='access_token', value=access_token, httponly=True)
 
             return response
         except exceptions.AuthenticationFailed:
             return Response({"message": "User is not authenticated."}, status=401)
+        except Exception as e:
+            return Response({"error": e.args}, status=500)
+
+
+class LogoutUser(APIView):
+    authentication_classes = []
+    def post(self, request):
+        try:
+            response = Response({"message": "User logged out successfully."})
+            response.delete_cookie('access_token')
+
+            redis_instance.lpush("blacklist", request.COOKIES.get('refresh_token'))
+
+            response.delete_cookie('refresh_token')
+
+            return response
         except Exception as e:
             return Response({"error": e.args}, status=500)

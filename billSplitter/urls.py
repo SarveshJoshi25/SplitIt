@@ -20,4 +20,5 @@ from django.urls import path, include
 urlpatterns = [
     path('split_it/admin/', admin.site.urls),
     path('split_it/api/v1/authenticate/', include('splitIt.authorization.urls')),
+    path('split_it/__debug__/', include('debug_toolbar.urls')),
 ]
