@@ -83,7 +83,14 @@ class AuthenticateUser(APIView):
 class RefreshToken(APIView):
     def post(self, request):
         try:
+            print(request.COOKIES)
+
             refresh_token = request.COOKIES.get('refresh_token')
+            print(refresh_token)
+
+            if refresh_token is None:
+                return Response({"message": "Refresh Token not found."}, status=401)
+
             user_id = decode_tokens(refresh_token, False)['user_id']
 
             blacklist = redis_instance.lrange("blacklist", 0, -1)
