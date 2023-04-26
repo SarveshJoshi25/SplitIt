@@ -1,0 +1,9 @@
+/splitIt/migrations/*
+/venv/*
+/static/*
+/templates/*
+.env
+db.sqlite3
+*/__pycache__/
+.idea/
+__pycache__/
