@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 import urllib
 from pathlib import Path
-from config import DatabaseString, DatabaseString2, DatabasePassword
+from config import DatabaseString, DatabaseString2, DatabasePassword, DjangoSecretKey
 from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-n3(m=etj#o)-6&8mw!67+1=i9dj_2gkxofk56@!76(p_#%+p3!'
+SECRET_KEY = DjangoSecretKey
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

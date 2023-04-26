@@ -19,5 +19,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('split_it/admin/', admin.site.urls),
-    path('split_it/api/v1/', include('splitIt.urls')),
+    path('split_it/api/v1/authenticate/', include('splitIt.authorization.urls')),
 ]
