@@ -26,3 +26,7 @@ class UserSerializer(serializers.Serializer):
         validated_data['hashed_password'] = bcrypt.hashpw(validated_data['hashed_password'].encode('utf-8'),
                                                           bcrypt.gensalt()).decode('utf-8')
         return Users.objects.create(**validated_data)
+
+    @staticmethod
+    def fetch_user(user_id):
+        return Users.objects.get(user_id=user_id)

@@ -1,0 +1,3 @@
+- Start the server "python manage.py runserver"
+- redis-server --port 6360
+- python -m celery -A billSplitter  worker -l info

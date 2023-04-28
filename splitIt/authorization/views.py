@@ -1,15 +1,14 @@
-import redis
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.authentication import get_authorization_header
+from rest_framework.permissions import AllowAny
 from rest_framework import exceptions
 from .serializers import UserSerializer
 from splitIt.models import Users
 from django.db.models import Q
 import bcrypt
-from .authentication_tokens import create_tokens, decode_tokens
+from .authentication_tokens import create_tokens, decode_tokens, authenticate_user
 import redis
+from ..tasks import send_verification_email
 
 redis_instance = redis.Redis(host='localhost', port=6379, db=0)
 
@@ -26,7 +25,12 @@ class CreateAccount(APIView):
 
             serialised_data = serialised_data.save()
 
-            return Response({"message": "Account created successfully"}, status=200)
+            access_token = create_tokens(serialised_data.user_id, True)
+            response = Response({"access_token": access_token}, status=200)
+            response.set_cookie(key='refresh_token', value=create_tokens(serialised_data.user_id, False), httponly=True)
+            response.set_cookie(key='access_token', value=access_token, httponly=True)
+
+            return response
 
         except Exception as e:
             print(e.args)
@@ -51,6 +55,8 @@ class UserLogin(APIView):
                 response.set_cookie(key='refresh_token', value=create_tokens(user.user_id, False), httponly=True)
             response.set_cookie(key='access_token', value=access_token, httponly=True)
 
+            if not user.is_email_validated:
+                send_verification_email.delay(user.user_id)
             return response
 
         except Users.DoesNotExist:
@@ -61,27 +67,8 @@ class UserLogin(APIView):
             return Response({"error": e.args}, status=500)
 
 
-class AuthenticateUser(APIView):
-    authentication_classes = []
-
-    def get(self, request):
-        try:
-            authentication_token = get_authorization_header(request).split()
-            if authentication_token and len(authentication_token) == 2:
-                authentication_token = authentication_token[1].decode('utf-8')
-
-                user_id = decode_tokens(authentication_token, True)['user_id']
-                user = Users.objects.get(user_id=user_id)
-
-                return Response(UserSerializer(user).data, status=200)
-        except exceptions.AuthenticationFailed:
-            return Response({"message": "User is not authenticated."}, status=401)
-        except Exception as e:
-            return Response({"error": e.args}, status=500)
-
-
 class RefreshToken(APIView):
-    def post(self, request):
+    def get(self, request):
         try:
             print(request.COOKIES)
 
@@ -112,6 +99,7 @@ class RefreshToken(APIView):
 
 class LogoutUser(APIView):
     authentication_classes = []
+
     def post(self, request):
         try:
             response = Response({"message": "User logged out successfully."})
@@ -122,5 +110,33 @@ class LogoutUser(APIView):
             response.delete_cookie('refresh_token')
 
             return response
+        except Exception as e:
+            return Response({"error": e.args}, status=500)
+
+
+class ResendVerificationEmail(APIView):
+    def get(self, request):
+        try:
+            user = authenticate_user(request)
+            if not user.is_email_validated:
+                send_verification_email.delay(user.user_id)
+                return Response({"message": "Verification email sent."}, status=200)
+            else:
+                return Response({"message": "User is already verified."}, status=200)
+        except exceptions.AuthenticationFailed:
+            return Response({"message": "Authentication has failed."}, status=401)
+        except Exception as e:
+            return Response({"error": e.args}, status=500)
+
+
+class VerifyEmailAddress(APIView):
+    def post(self, request, verify):
+        try:
+            user = Users.objects.get(user_id=verify)
+            user.is_email_validated = True
+            user.save()
+            return Response({"message": "Email verified successfully."}, status=200)
+        except Users.DoesNotExist:
+            return Response({"message": "User doesn't exist."}, status=500)
         except Exception as e:
             return Response({"error": e.args}, status=500)
