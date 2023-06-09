@@ -4,7 +4,7 @@ from splitIt.authorization.views import CreateAccount, UserLogin, RefreshToken, 
     VerifyEmailAddress, ResendVerificationEmail
 
 urlpatterns = [
-    path('join/', CreateAccount.as_view(), name='CreateAccount'),
+    path('signup/', CreateAccount.as_view(), name='CreateAccount'),
     path('login/', UserLogin.as_view(), name='UserLogin'),
     path('refresh/', RefreshToken.as_view(), name='RefreshToken'),
     path('logout/', LogoutUser.as_view(), name='LogoutUser'),
